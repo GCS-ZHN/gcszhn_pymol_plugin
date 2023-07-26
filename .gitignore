@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+
+# structures
+*.cif
+*.pdb
+*.ent
+*.sdf
+*.mol
+*.ply
+
+# private
+private/
