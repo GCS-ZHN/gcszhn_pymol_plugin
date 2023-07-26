@@ -11,3 +11,6 @@ __pycache__/
 
 # private
 private/
+
+# data
+*.zip
