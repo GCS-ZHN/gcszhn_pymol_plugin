@@ -16,7 +16,7 @@ def get_hydro(resn, scale_name='Ja', ignore_miss_res: bool = True):
         return scale_map[resn]
     else:
         if not ignore_miss_res:
-            raise KeyError(f"Undefined resn {resn} in hdropathy scale.")
+            raise KeyError(f"Undefined resn {resn} in hydrophobicity scale.")
         return 0
 
 
