@@ -8,6 +8,8 @@ __pycache__/
 *.sdf
 *.mol
 *.ply
+*.pse
+*.png
 
 # private
 private/

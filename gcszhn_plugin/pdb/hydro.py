@@ -50,7 +50,11 @@ def colormap(
 def set_hydro_color_v2(
         selection: str = '(all)',
         palette: str = 'blue_white_red',
-        scale_name: str = 'Ja'):
+        scale_name: str = 'Ja',
+        minimum: float = None,
+        maximum: float = None,
+        level: str = 'A',
+        with_sasa: bool = True):
     """
     Annotate hydrophobicity color of each
     residue. this function implmented by
@@ -68,18 +72,57 @@ def set_hydro_color_v2(
         more available palette is available
         by `help spectrum`.
     """
-    minimum = HYDRO_SCALE_MAP[scale_name].min()
-    maximum = HYDRO_SCALE_MAP[scale_name].max()
+    if type(minimum) is not type(maximum):
+        raise ValueError("Please specific minimum and maximum both or not!")
+    
+    auto_bound = minimum is None
+    
+    if auto_bound:
+        minimum = float('inf')
+        maximum = -minimum
+
+    dot_solvent = cmd.get('dot_solvent')
+    sasa_buffer = dict()
+
+    if with_sasa:
+        cmd.set('dot_solvent', 'on')
+        cmd.get_area(selection, load_b=1)
+
+    def set_hydro(resn, resi, chain, b, scale_name='Ja'):
+        nonlocal minimum, maximum
+        v = get_hydro(resn, scale_name=scale_name)
+        if with_sasa:
+            if level == 'R':
+                res_sel_str = f'resi {resi} and chain {chain} and {selection}'
+            elif level == 'C':
+                res_sel_str = f'chain {chain} and {selection}'
+            
+            if level == 'A':
+                sasa = b
+            else:
+                if res_sel_str not in sasa_buffer:
+                    sasa_buffer[res_sel_str] = sum(atom.b for atom in cmd.get_model(res_sel_str).atom)
+                sasa = sasa_buffer[res_sel_str]
+            v *= sasa
+        
+        if auto_bound:
+            minimum = min(minimum, v)
+            maximum = max(maximum, v)
+        return v
+    
     cmd.alter(
         selection,
-        f'b = set_hydro(resn, scale_name="{scale_name}")',
-        space={'set_hydro': get_hydro})
+        f'b = set_hydro(resn, resi, chain, b, scale_name="{scale_name}")',
+        space={'set_hydro': set_hydro})
     cmd.spectrum(
         'b',
         palette=palette,
         selection=selection,
         minimum=minimum,
         maximum=maximum)
+
+    if with_sasa:
+        cmd.set('dot_solvent', dot_solvent)
 
 
 def set_hydro_color_v1(
