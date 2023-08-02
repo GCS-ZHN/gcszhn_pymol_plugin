@@ -4,6 +4,8 @@ from pymol import cmd
 from scipy.spatial.distance import cdist
 from .mesh_utils import Mesh
 
+__all__ = ['extract_patch', 'patch_seq']
+
 # 三字母氨基酸缩写和单字母缩写的对应关系，字典
 # https://www.bioinformatics.org/sms/iupac.html
 amino_code = {

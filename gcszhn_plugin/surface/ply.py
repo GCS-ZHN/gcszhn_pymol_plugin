@@ -5,6 +5,8 @@ from pymol.cgo import *
 from .mesh_utils import Mesh
 import numpy as np
 
+__all__ = ['load_ply', 'load_giface']
+
 colorDict = {'sky': [0.0, 0.76, 1.0 ],
         'sea': [0.0, 0.90, 0.5 ],
         'yellowtint': [0.88, 0.97, 0.02 ],

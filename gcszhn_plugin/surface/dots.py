@@ -2,6 +2,8 @@ from pymol import cmd
 from pymol.cgo import *
 import numpy as np
 
+__all__ = ['load_dots']
+
 colorDict = {'sky': [COLOR, 0.0, 0.76, 1.0 ],
         'sea': [COLOR, 0.0, 0.90, 0.5 ],
         'yellowtint': [COLOR, 0.88, 0.97, 0.02 ],

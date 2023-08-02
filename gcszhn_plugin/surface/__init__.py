@@ -1,12 +1,15 @@
 from pymol import cmd
-from .load_ply import *
-from .load_dots import *
-from .extract_patch import *
+from . import (ply, dots, patch)
+from .ply import *
+from .dots import *
+from .patch import *
+
+__all__ = []
+__all__.extend(ply.__all__)
+__all__.extend(dots.__all__)
+__all__.extend(patch.__all__)
 
 def __init_plugin__(*args):
-    cmd.extend('loadply', load_ply)
-    cmd.extend('loaddots', load_dots)
-    cmd.extend('loadgiface', load_giface)
-    cmd.extend('extractpatch', extract_patch)
-    cmd.extend('patchseq', patch_seq)
+    for func_name in __all__:
+        cmd.extend(func_name, globals()[func_name])
 

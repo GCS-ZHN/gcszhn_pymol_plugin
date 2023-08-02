@@ -5,6 +5,13 @@ from pymol import cmd
 from colour import Color
 from importlib import resources
 
+
+__all__ = [
+    "set_hydro_color_v2",
+    "set_hydro_color_v1",
+    "avail_hydro_scales",
+    "set_hydration_color"]
+
 # load scale.csv under current module dir
 with resources.open_text(__package__, "hydro_scale.csv") as f:
     HYDRO_SCALE_MAP = pd.read_csv(f, index_col=0)
@@ -163,3 +170,54 @@ def set_hydro_color_v1(
             res_color.get_rgb())
         cmd.color(colorn, 'resn_sel')
         cmd.delete('resn_sel')
+
+
+def set_hydration(selection='(all)', radius=2.8) -> tuple:
+    """
+    Count number of water molecules (hydration water molecules)
+    within a given radius of each residue. These
+    number will be stored in b-factor of
+    each residue.
+
+    Parameters
+    ----------
+    selection: str
+        pymol selection string.
+    radius: float
+    TODO
+    """
+    minimum = float('inf')
+    maximum = -minimum
+    for residue_ca_atom in cmd.get_model(f"{selection} and name CA").atom:
+        resn = residue_ca_atom.resn
+        resi = residue_ca_atom.resi
+        chain = residue_ca_atom.chain
+        residue = f'resn {resn} and resi {resi} and chain {chain} and {selection}'
+        count = cmd.count_atoms(
+            f"(resn HOH) within {radius} of ({residue} and elem N+O)")
+        minimum = min(count, minimum)
+        maximum = max(count, maximum)
+        cmd.alter(residue, f'b={count}')
+    
+    if minimum == float('inf'):
+        raise ValueError(f"No valid residue detected for selection {selection}")
+    
+    return minimum, maximum
+
+
+def set_hydration_color(
+        selection='(all)',
+        radius=2.8,
+        minimum:int = None,
+        maximum:int = None,
+        palette:str = "red_white_blue"):
+    """
+    Annotate residue color according
+    to hydration water molecular count.
+
+    TODO
+    """
+    _minimum, _maximum = set_hydration(selection, radius)
+    minimum = minimum if minimum is not None else _minimum
+    maximum = maximum if maximum is not None else _maximum
+    cmd.spectrum('b', palette, selection, minimum=minimum, maximum=maximum)

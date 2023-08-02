@@ -1,5 +1,7 @@
 from pymol import cmd
 
+__all__ = ["set_sasa_color"]
+
 def set_sasa_color(
         selection:str = "(all)", 
         level: str = "A", 
