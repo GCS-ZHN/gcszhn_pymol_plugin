@@ -4,6 +4,7 @@ import pandas as pd
 from pymol import cmd
 from colour import Color
 from importlib import resources
+from .sasa import get_sasa
 
 
 __all__ = [
@@ -81,19 +82,17 @@ def set_hydro_color_v2(
     """
     if type(minimum) is not type(maximum):
         raise ValueError("Please specific minimum and maximum both or not!")
-    
+
     auto_bound = minimum is None
-    
+
     if auto_bound:
         minimum = float('inf')
         maximum = -minimum
 
-    dot_solvent = cmd.get('dot_solvent')
     sasa_buffer = dict()
 
     if with_sasa:
-        cmd.set('dot_solvent', 'on')
-        cmd.get_area(selection, load_b=1)
+        get_sasa(selection, load_b=1)
 
     def set_hydro(resn, resi, chain, b, scale_name='Ja'):
         nonlocal minimum, maximum
@@ -103,20 +102,21 @@ def set_hydro_color_v2(
                 res_sel_str = f'resi {resi} and chain {chain} and {selection}'
             elif level == 'C':
                 res_sel_str = f'chain {chain} and {selection}'
-            
+
             if level == 'A':
                 sasa = b
             else:
                 if res_sel_str not in sasa_buffer:
-                    sasa_buffer[res_sel_str] = sum(atom.b for atom in cmd.get_model(res_sel_str).atom)
+                    sasa_buffer[res_sel_str] = sum(
+                        atom.b for atom in cmd.get_model(res_sel_str).atom)
                 sasa = sasa_buffer[res_sel_str]
             v *= sasa
-        
+
         if auto_bound:
             minimum = min(minimum, v)
             maximum = max(maximum, v)
         return v
-    
+
     cmd.alter(
         selection,
         f'b = set_hydro(resn, resi, chain, b, scale_name="{scale_name}")',
@@ -127,9 +127,6 @@ def set_hydro_color_v2(
         selection=selection,
         minimum=minimum,
         maximum=maximum)
-
-    if with_sasa:
-        cmd.set('dot_solvent', dot_solvent)
 
 
 def set_hydro_color_v1(
@@ -172,7 +169,7 @@ def set_hydro_color_v1(
         cmd.delete('resn_sel')
 
 
-def set_hydration(selection='(all)', radius=2.8) -> tuple:
+def set_hydration(selection: str = '(all)', radius: float = 2.8, sasa_threshold: float = -1.0) -> tuple:
     """
     Count number of water molecules (hydration water molecules)
     within a given radius of each residue. These
@@ -188,36 +185,59 @@ def set_hydration(selection='(all)', radius=2.8) -> tuple:
     """
     minimum = float('inf')
     maximum = -minimum
-    for residue_ca_atom in cmd.get_model(f"{selection} and name CA").atom:
-        resn = residue_ca_atom.resn
-        resi = residue_ca_atom.resi
-        chain = residue_ca_atom.chain
-        residue = f'resn {resn} and resi {resi} and chain {chain} and {selection}'
+    is_sasa = sasa_threshold >= 0
+    residue_atoms = cmd.get_model(f"{selection} and name CA").atom
+
+    def _residue_format(resn, resi, chain):
+        return f'resn {resn} and resi {resi} and chain {chain} and {selection}'
+
+    if is_sasa:
+        get_sasa(selection, load_b=1)
+        sasa_buffer = dict()
+        for residue_ca_atom in residue_atoms:
+            residue = _residue_format(
+                residue_ca_atom.resn,
+                residue_ca_atom.resi,
+                residue_ca_atom.chain
+            )
+            sasa_buffer[residue] = sum(atom.b for atom in cmd.get_model(residue).atom)
+
+    for residue_ca_atom in residue_atoms:
+        residue = _residue_format(
+            residue_ca_atom.resn,
+            residue_ca_atom.resi,
+            residue_ca_atom.chain
+        )
         count = cmd.count_atoms(
             f"(resn HOH) within {radius} of ({residue} and elem N+O)")
+        if is_sasa:
+            if sasa_buffer[residue] < sasa_threshold:
+                count = 0
         minimum = min(count, minimum)
         maximum = max(count, maximum)
         cmd.alter(residue, f'b={count}')
-    
+
     if minimum == float('inf'):
-        raise ValueError(f"No valid residue detected for selection {selection}")
-    
+        raise ValueError(
+            f"No valid residue detected for selection {selection}")
+
     return minimum, maximum
 
 
 def set_hydration_color(
         selection='(all)',
         radius=2.8,
-        minimum:int = None,
-        maximum:int = None,
-        palette:str = "red_white_blue"):
+        minimum: int = None,
+        maximum: int = None,
+        palette: str = "red_white_blue",
+        sasa_threshold: float = -1.0):
     """
     Annotate residue color according
     to hydration water molecular count.
 
     TODO
     """
-    _minimum, _maximum = set_hydration(selection, radius)
+    _minimum, _maximum = set_hydration(selection, radius, sasa_threshold=sasa_threshold)
     minimum = minimum if minimum is not None else _minimum
     maximum = maximum if maximum is not None else _maximum
     cmd.spectrum('b', palette, selection, minimum=minimum, maximum=maximum)

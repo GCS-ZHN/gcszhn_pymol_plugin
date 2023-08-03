@@ -1,6 +1,20 @@
 from pymol import cmd
+from ..utils import local_setting
 
-__all__ = ["set_sasa_color"]
+__all__ = ["set_sasa_color", "get_sasa"]
+
+
+def get_sasa(
+        selection: str = '(all)',
+        solvent_radius: float = 1.4,
+        load_b: int = 0,
+        dot_density: int = 2) -> float:
+    with local_setting(
+        dot_solvent='on', 
+        dot_density=dot_density, 
+        solvent_radius=solvent_radius):
+        return cmd.get_area(selection, load_b=load_b)
+
 
 def set_sasa_color(
         selection:str = "(all)", 
@@ -33,11 +47,9 @@ def set_sasa_color(
         minimum = float('inf')
         maximum = -minimum
 
-    dot_solvent = cmd.get('dot_solvent')
     sasa_buffer = dict()
 
-    cmd.set('dot_solvent', 'on')
-    cmd.get_area(selection, load_b=1)
+    get_sasa(selection, load_b=1)
 
     def set_sasa(resi, chain, b):
         if level == "R":
@@ -68,5 +80,3 @@ def set_sasa_color(
         selection=selection,
         minimum=minimum,
         maximum=maximum)
-
-    cmd.set('dot_solvent', dot_solvent)
