@@ -1,11 +1,13 @@
+from typing import Dict
 from pymol import cmd
-from ..utils import local_setting
+from ..utils import local_setting, residue_format, register_pymol_cmd, residue_with_CA
 
 __all__ = ["set_sasa_color", "get_sasa"]
 
 
+@register_pymol_cmd
 def get_sasa(
-        selection: str = '(all)',
+        selection: str,
         solvent_radius: float = 1.4,
         load_b: int = 0,
         dot_density: int = 2) -> float:
@@ -16,6 +18,7 @@ def get_sasa(
         return cmd.get_area(selection, load_b=load_b)
 
 
+@register_pymol_cmd
 def set_sasa_color(
         selection:str = "(all)", 
         level: str = "A", 
@@ -80,3 +83,16 @@ def set_sasa_color(
         selection=selection,
         minimum=minimum,
         maximum=maximum)
+
+
+def get_sasa_by_res(selection: str) -> Dict[str, float]:
+    get_sasa(selection=selection, load_b=1)
+    selection = residue_with_CA(selection)
+    sasa_dict = dict()
+
+    def _update_res_sasa(atom):
+        residue = residue_format(atom.resn, atom.resi, atom.chain, selection)
+        sasa_dict[residue] = sum(atom.b for atom in cmd.get_model(residue).atom)
+    
+    cmd.iterate(selection, _update_res_sasa)
+    return sasa_dict

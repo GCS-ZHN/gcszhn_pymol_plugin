@@ -4,7 +4,8 @@ import pandas as pd
 from pymol import cmd
 from colour import Color
 from importlib import resources
-from .sasa import get_sasa
+from .sasa import get_sasa_by_res
+from ..utils import register_pymol_cmd, residue_with_CA, residue_format
 
 
 __all__ = [
@@ -28,6 +29,7 @@ def get_hydro(resn, scale_name='Ja', ignore_miss_res: bool = True):
         return 0
 
 
+@register_pymol_cmd
 def avail_hydro_scales():
     """
     List available hydrophobicity scales.
@@ -55,13 +57,13 @@ def colormap(
     return val_color
 
 
+@register_pymol_cmd
 def set_hydro_color_v2(
         selection: str = '(all)',
         palette: str = 'blue_white_red',
         scale_name: str = 'Ja',
         minimum: float = None,
         maximum: float = None,
-        level: str = 'A',
         with_sasa: bool = True):
     """
     Annotate hydrophobicity color of each
@@ -89,37 +91,29 @@ def set_hydro_color_v2(
         minimum = float('inf')
         maximum = -minimum
 
-    sasa_buffer = dict()
-
     if with_sasa:
-        get_sasa(selection, load_b=1)
+        sasa_buffer = get_sasa_by_res(selection)
+    
+    selection = residue_with_CA(selection)
 
-    def set_hydro(resn, resi, chain, b, scale_name='Ja'):
+    def set_hydro(resn, resi, chain, scale_name='Ja'):
         nonlocal minimum, maximum
         v = get_hydro(resn, scale_name=scale_name)
-        if with_sasa:
-            if level == 'R':
-                res_sel_str = f'resi {resi} and chain {chain} and {selection}'
-            elif level == 'C':
-                res_sel_str = f'chain {chain} and {selection}'
+        residue = residue_format(resn, resi, chain, selection)
 
-            if level == 'A':
-                sasa = b
-            else:
-                if res_sel_str not in sasa_buffer:
-                    sasa_buffer[res_sel_str] = sum(
-                        atom.b for atom in cmd.get_model(res_sel_str).atom)
-                sasa = sasa_buffer[res_sel_str]
+        if with_sasa:
+            sasa = sasa_buffer[residue]
             v *= sasa
 
         if auto_bound:
             minimum = min(minimum, v)
             maximum = max(maximum, v)
+
         return v
 
     cmd.alter(
         selection,
-        f'b = set_hydro(resn, resi, chain, b, scale_name="{scale_name}")',
+        f'b = set_hydro(resn, resi, chain, scale_name="{scale_name}")',
         space={'set_hydro': set_hydro})
     cmd.spectrum(
         'b',
@@ -129,6 +123,7 @@ def set_hydro_color_v2(
         maximum=maximum)
 
 
+@register_pymol_cmd
 def set_hydro_color_v1(
         selection: str = '(all)',
         scale_name: str = 'Ja',
@@ -186,28 +181,14 @@ def set_hydration(selection: str = '(all)', radius: float = 2.8, sasa_threshold:
     minimum = float('inf')
     maximum = -minimum
     is_sasa = sasa_threshold >= 0
-    residue_atoms = cmd.get_model(f"{selection} and name CA").atom
 
-    def _residue_format(resn, resi, chain):
-        return f'resn {resn} and resi {resi} and chain {chain} and {selection}'
+    selection = residue_with_CA(selection)
 
     if is_sasa:
-        get_sasa(selection, load_b=1)
-        sasa_buffer = dict()
-        for residue_ca_atom in residue_atoms:
-            residue = _residue_format(
-                residue_ca_atom.resn,
-                residue_ca_atom.resi,
-                residue_ca_atom.chain
-            )
-            sasa_buffer[residue] = sum(atom.b for atom in cmd.get_model(residue).atom)
+        sasa_buffer = get_sasa_by_res(selection)
 
-    for residue_ca_atom in residue_atoms:
-        residue = _residue_format(
-            residue_ca_atom.resn,
-            residue_ca_atom.resi,
-            residue_ca_atom.chain
-        )
+    def _update(resn, resi, chain):
+        residue = residue_format(resn, resi, chain, selection)
         count = cmd.count_atoms(
             f"(resn HOH) within {radius} of ({residue} and elem N+O)")
         if is_sasa:
@@ -215,7 +196,12 @@ def set_hydration(selection: str = '(all)', radius: float = 2.8, sasa_threshold:
                 count = 0
         minimum = min(count, minimum)
         maximum = max(count, maximum)
-        cmd.alter(residue, f'b={count}')
+        return count
+    
+    cmd.alter(
+        selection,
+        f'b = _update(resn, resi, chain)',
+        space={'_update': _update})
 
     if minimum == float('inf'):
         raise ValueError(
@@ -224,6 +210,7 @@ def set_hydration(selection: str = '(all)', radius: float = 2.8, sasa_threshold:
     return minimum, maximum
 
 
+@register_pymol_cmd
 def set_hydration_color(
         selection='(all)',
         radius=2.8,
