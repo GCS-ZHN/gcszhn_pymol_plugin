@@ -17,11 +17,11 @@ def copy_selection(selection: str = "(all)", mode="tab"):
     data = data.drop_duplicates(subset=['chain', 'resi', 'resn'])
     if mode == "tab":
         data.to_clipboard(index=False)
-    if mode == "rf_hotspot":
+    elif mode == "rf_hotspot":
         resi = data['chain'] + data['resi']
         resi = pd.DataFrame(resi, columns=['resi'])
         resi.T.to_clipboard(index=False, sep=",", header=False)
-    if mode == "range":
+    elif mode == "range":
         data_group = data.groupby("chain")
         resi_range = data_group.apply(lambda d: int_array_to_str(d['resi'].astype(int), d.name))
         resi_range.to_clipboard(index=False, header=False)
