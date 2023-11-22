@@ -1,5 +1,6 @@
 from pymol import cmd
 from pymol.cgo import *
+from ..utils import register_pymol_cmd
 import numpy as np
 
 __all__ = ['load_dots']
@@ -18,6 +19,8 @@ colorDict = {'sky': [COLOR, 0.0, 0.76, 1.0 ],
         'white': [COLOR, 1.0, 1.0, 1.0],
         'gray': [COLOR, 0.9, 0.9, 0.9] }
 
+
+@register_pymol_cmd
 def load_dots(filename, color="white", name='ply', dotSize=0.2, lineSize = 0.5, doStatistics=False):
     lines = open(filename).readlines()
     lines = [line.rstrip() for line in lines]

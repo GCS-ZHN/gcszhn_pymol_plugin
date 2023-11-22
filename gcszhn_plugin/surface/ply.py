@@ -1,11 +1,12 @@
 from pymol import cmd
 from colour import Color
 from itertools import combinations
+from ..utils import register_pymol_cmd
 from pymol.cgo import *
 from .mesh_utils import Mesh
 import numpy as np
 
-__all__ = ['load_ply', 'load_giface']
+__all__ = ['load_ply', 'load_ply_with_patch', 'load_giface']
 
 colorDict = {'sky': [0.0, 0.76, 1.0 ],
         'sea': [0.0, 0.90, 0.5 ],
@@ -112,6 +113,7 @@ def add_triangle_faces(faces, vertices, colors, normals):
     return obj
 
 
+@register_pymol_cmd
 def load_ply_with_patch(ply_file, patch_list_file, *patch_id_colors, name = None, backgroud_color = 'gray'):
     if not name:
         name = os.path.basename(ply_file).split('.')[0]
@@ -140,7 +142,7 @@ def load_ply_with_patch(ply_file, patch_list_file, *patch_id_colors, name = None
     cmd.load_cgo(obj, name)
 
 
-
+@register_pymol_cmd
 def load_ply(filename, group_name = None, vertex_size=0.2, enable_properties = None):
     mesh = Mesh.create_mesh()
     mesh.load_mesh(filename)
@@ -273,7 +275,8 @@ def load_ply(filename, group_name = None, vertex_size=0.2, enable_properties = N
 
     cmd.group(group_name, " ".join(group_members))
 
-# Load the sillouete of an iface.
+
+@register_pymol_cmd
 def load_giface(filename, color="white", name='giface', dotSize=0.2, lineSize = 1.0):
     mesh = Mesh.create_mesh()
     mesh.load_mesh(filename)
