@@ -3,8 +3,9 @@ import numpy as np
 from pymol import cmd
 from scipy.spatial.distance import cdist
 from .mesh_utils import Mesh
+from ..utils import register_pymol_cmd
 
-__all__ = ['extract_patch', 'patch_seq']
+__all__ = ['extract_patch']
 
 # 三字母氨基酸缩写和单字母缩写的对应关系，字典
 # https://www.bioinformatics.org/sms/iupac.html
@@ -32,9 +33,33 @@ amino_code = {
 }
 
 
-
-def extract_patch(patch_name:str, patch_ply_name:str, model_name: str = "(all)", remove_model: bool = False,
+@register_pymol_cmd
+def extract_patch(patch_name:str, 
+                  patch_ply_name:str,
+                  model_name: str = "(all)",
+                  remove_model: bool = False,
                   distance_threshold: float = 4.0):
+    """
+    Extract patch residues from model
+    according to the patch mesh object.
+
+    Parameters
+    ----------
+    patch_name : str
+        Name of the extracted patch.
+
+    patch_ply_name : str
+        Name of the provided patch mesh object.
+    
+    model_name: str
+        Name of the specific model.
+
+    remove_model: bool
+        If True, remove model after patch extracted.
+
+    distance_threshold: float
+        The threshold of distance to defined patch residue.
+    """
     atoms_coords = np.array([atom.coord for atom in cmd.get_model(model_name).atom])
     atoms_ids = np.array([atom.id for atom in cmd.get_model(model_name).atom])
     mesh = Mesh.create_mesh()
@@ -50,19 +75,4 @@ def extract_patch(patch_name:str, patch_ply_name:str, model_name: str = "(all)",
     if remove_model:
         cmd.delete(model_name)
     cmd.delete("selected_atoms")
-
-
-def patch_seq(patch_name):
-    resi_set = set()
-    seq_list = []
-    for atom in cmd.get_model(patch_name).atom:
-        resn = atom.resn
-        resi = int(atom.resi)
-        if resi in resi_set:
-            continue
-        resi_set.add(resi)
-        while resi > len(seq_list) + 1:
-            seq_list.append("-")
-        seq_list.append(amino_code[resn])
-    return "".join(seq_list)
 

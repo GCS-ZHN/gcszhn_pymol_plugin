@@ -11,6 +11,10 @@ def get_sasa(
         solvent_radius: float = 1.4,
         load_b: int = 0,
         dot_density: int = 2) -> float:
+    """
+    Calculate solvent accessible surface area (SASA)
+    for specific selection.
+    """
     with local_setting(
         dot_solvent='on', 
         dot_density=dot_density, 
