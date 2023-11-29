@@ -8,6 +8,10 @@ download and packaged "gcszhn_plugin" as a ZIP file, and install it as pymol plu
 
 Copy selection to clipboard.
 
+- save_by_objects
+
+Save different objects as different files.
+
 - plddt_color
 
 Plot plddt color by residue. The same color as Alphafold DB.
