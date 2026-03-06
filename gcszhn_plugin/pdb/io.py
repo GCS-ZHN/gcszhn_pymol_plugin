@@ -57,7 +57,7 @@ def save_by_objects(prefix: str = "", file_type: str = "pdb"):
 
 
 @register_pymol_cmd
-def png_pse(width: int, height: int, transparent: bool = False, output: str|None = None) -> str:
+def png_pse(width: int, height: int, transparent: bool = False, output: str = None) -> str:
     """
     Save PNG image with default pse path.
 
