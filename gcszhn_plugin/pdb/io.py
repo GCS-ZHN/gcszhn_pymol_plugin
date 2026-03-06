@@ -1,5 +1,6 @@
 import pandas as pd
 from pymol import cmd
+from pathlib import Path
 from ..utils import register_pymol_cmd, int_array_to_str
 
 
@@ -53,3 +54,37 @@ def save_by_objects(prefix: str = "", file_type: str = "pdb"):
     """
     for obj in cmd.get_object_list():
         cmd.save(f"{prefix}{obj}.{file_type}", obj)
+
+
+@register_pymol_cmd
+def png_pse(width: int, height: int, transparent: bool = False, output: str|None = None) -> str:
+    """
+    Save PNG image with default pse path.
+
+    Parameters
+    ----------
+    width : int
+        Image width.
+    height : int
+        Image height.
+    transparent : bool, optional
+        Whether to save image with transparent background.
+    output : str, optional
+        Output path. If not specified, the image will be saved
+        to the same directory as the session file with the same name
+        and .png extension.
+    """
+    if output is None:
+        session_file = cmd.get("session_file")
+        if not session_file.strip():
+            raise ValueError("No session file found. Please specify output path.")
+        output = str(Path(session_file).with_suffix(".png"))
+    
+    width = int(width)
+    height = int(height)
+    if transparent:
+        cmd.set("ray_opaque_background", 'off')
+    cmd.ray(width, height)
+    cmd.png(output)
+    print(f'png_pse: saved image to {output} (width={width}, height={height}, transparent={transparent})')
+    return output
